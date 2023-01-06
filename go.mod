@@ -3,7 +3,7 @@ module sigs.k8s.io/promo-tools/v3
 go 1.19
 
 require (
-	cloud.google.com/go/containeranalysis v0.6.0
+	cloud.google.com/go/containeranalysis v0.7.0
 	cloud.google.com/go/errorreporting v0.3.0
 	cloud.google.com/go/iam v0.8.0
 	cloud.google.com/go/logging v1.6.1
@@ -33,7 +33,7 @@ require (
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7 // indirect
-	cloud.google.com/go v0.105.0 // indirect
+	cloud.google.com/go v0.107.0 // indirect
 	cloud.google.com/go/compute v1.13.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.2 // indirect
 	cloud.google.com/go/grafeas v0.2.0 // indirect
