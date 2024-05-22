@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -321,7 +322,7 @@ func testSetup(repoRoot, projectID string, t *E2ETest) error {
 }
 
 func populateGoldenImages(repoRoot string) error {
-	goldenPush := repoRoot + "/test-e2e/golden-images/push-golden.sh"
+	goldenPush := filepath.Join(repoRoot, "test-e2e", "golden-images", "push-golden.sh")
 	cmd := command.NewWithWorkDir(
 		repoRoot,
 		goldenPush,

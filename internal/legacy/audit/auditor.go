@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-	"time"
 
 	"cloud.google.com/go/errorreporting"
 	"github.com/sirupsen/logrus"
@@ -95,11 +94,7 @@ func (s *ServerContext) RunAuditor() {
 	}
 	// Start HTTP server.
 	logrus.Infof("Listening on port %s", port)
-	server := &http.Server{
-		Addr:              ":" + port,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-	logrus.Fatal(server.ListenAndServe())
+	logrus.Fatal(http.ListenAndServe(":"+port, nil)) //nolint: gosec
 }
 
 // ParsePubSubMessage parses an HTTP request body into a reg.GCRPubSubPayload.

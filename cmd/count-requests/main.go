@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -77,7 +78,7 @@ func getSubProjects() []string {
 	_, err = cmd.Output()
 	handle(cmd, err)
 	// List the number of sub-projects in the repo.
-	subProjects := tmpDir + "/k8s.gcr.io/manifests"
+	subProjects := filepath.Join(tmpDir, "k8s.gcr.io", "manifests")
 	cmd = exec.Command("ls", subProjects)
 	out, err = cmd.Output()
 	handle(cmd, err)
