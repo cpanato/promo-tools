@@ -40,6 +40,19 @@ import (
 	"sigs.k8s.io/promo-tools/v4/types/image"
 )
 
+// E2ETests is an array of E2ETest.
+type E2ETests []E2ETest
+
+// E2ETest holds all the information about a single e2e test. It has the
+// promoter manifest, and the before/after snapshots of all repositories that it
+// cares about.
+type E2ETest struct {
+	Name       string             `yaml:"name,omitempty"`
+	Registries []registry.Context `yaml:"registries,omitempty"`
+	Invocation []string           `yaml:"invocation,omitempty"`
+	Snapshots  []RegistrySnapshot `yaml:"snapshots,omitempty"`
+}
+
 const kpromoMain = "cmd/kpromo/main.go"
 
 func main() {
@@ -165,7 +178,7 @@ func testSetup(repoRoot string, t *E2ETest) error {
 		return fmt.Errorf("cleaning test repository: %w", err)
 	}
 
-	goldenPush := fmt.Sprintf("%s/test-e2e/golden-images/push-golden.sh", repoRoot)
+	goldenPush := repoRoot + "/test-e2e/golden-images/push-golden.sh"
 
 	cmd := command.NewWithWorkDir(
 		repoRoot,
@@ -319,19 +332,6 @@ func clearRepository(regName image.Registry, sc *reg.SyncContext) {
 
 	sc.ClearRepository(regName, mkDeletionCmd, nil)
 }
-
-// E2ETest holds all the information about a single e2e test. It has the
-// promoter manifest, and the before/after snapshots of all repositories that it
-// cares about.
-type E2ETest struct {
-	Name       string             `yaml:"name,omitempty"`
-	Registries []registry.Context `yaml:"registries,omitempty"`
-	Invocation []string           `yaml:"invocation,omitempty"`
-	Snapshots  []RegistrySnapshot `yaml:"snapshots,omitempty"`
-}
-
-// E2ETests is an array of E2ETest.
-type E2ETests []E2ETest
 
 // RegistrySnapshot is the snapshot of a registry. It is basically the key/value
 // pair out of the reg.MasterInventory type (RegistryName + []Image).

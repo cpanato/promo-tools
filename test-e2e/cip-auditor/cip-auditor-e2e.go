@@ -39,6 +39,42 @@ import (
 	"sigs.k8s.io/promo-tools/v4/types/image"
 )
 
+// E2ETest holds all the information about a single e2e test. It has the
+// promoter manifest, and the before/after snapshots of all repositories that it
+// cares about.
+//
+// SetupCip is the cip command to run to set up the state. If it is empty, cip
+// is not called (to populate the GCR) --- this is useful for cases when we want
+// to have a blank GCR.
+//
+// Registries is the list of all registries involved for this test case. To
+// ensure hermeticity and reproducibility, these registries are *cleared* before
+// any of the actual test logic is executed.
+//
+// SetupExtra is how the test environment is set up *before* the Cloud Run
+// application is deployed.
+//
+// Mutations is how this test will modify the GCR state. It can be 1 or
+// more CLI statements.
+//
+// List of log statements (strings) to find in the logs (they are exact
+// string patterns to match, NOT regexes!). It is important to note that
+// *all* GCR state changes will result in *some* sort of log from the
+// auditor running in Cloud Run (whether the state change is VERIFIED or
+// REJECTED).
+type E2ETest struct {
+	Name        string             `yaml:"name,omitempty"`
+	Registries  []registry.Context `yaml:"registries,omitempty"`
+	ManifestDir string             `yaml:"manifestDir,omitempty"`
+	SetupCip    []string           `yaml:"setupCip,omitempty"`
+	SetupExtra  [][]string         `yaml:"setupExtra,omitempty"`
+	Mutations   [][]string         `yaml:"mutations,omitempty"`
+	LogMatch    []string           `yaml:"logMatch,omitempty"`
+}
+
+// E2ETests is an array of E2ETest.
+type E2ETests []*E2ETest
+
 func main() {
 	// NOTE: We can't run the tests in parallel because we only have 1 pair of
 	// staging/prod GCRs.
@@ -285,7 +321,7 @@ func testSetup(repoRoot, projectID string, t *E2ETest) error {
 }
 
 func populateGoldenImages(repoRoot string) error {
-	goldenPush := fmt.Sprintf("%s/test-e2e/golden-images/push-golden.sh", repoRoot)
+	goldenPush := repoRoot + "/test-e2e/golden-images/push-golden.sh"
 	cmd := command.NewWithWorkDir(
 		repoRoot,
 		goldenPush,
@@ -360,7 +396,7 @@ func getCmdEnableService(projectID, service string) []string {
 		"services",
 		"enable",
 		service,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -370,7 +406,7 @@ func getCmdListLogs(projectID string) []string {
 		"logging",
 		"logs",
 		"list",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -382,7 +418,7 @@ func getCmdDeleteLogs(projectID string) []string {
 		"logs",
 		"delete",
 		auditLogName,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -394,7 +430,7 @@ func getCmdDeleteErrorReportingEvents(projectID string) []string {
 		"error-reporting",
 		"events",
 		"delete",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -406,7 +442,7 @@ func getCmdListCloudRunServices(projectID string) []string {
 		"services",
 		"--platform=managed",
 		"list",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -419,7 +455,7 @@ func getCmdDeleteCloudRunServices(projectID string) []string {
 		"--platform=managed",
 		"delete",
 		auditorName,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 		"--region=us-central1",
 	}
 }
@@ -432,7 +468,7 @@ func getCmdListSubscriptions(projectID string) []string {
 		"subscriptions",
 		"list",
 		"--format=value(name)",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -443,7 +479,7 @@ func getCmdDeleteSubscription(projectID string) []string {
 		"subscriptions",
 		"delete",
 		subscriptionName,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -455,7 +491,7 @@ func getCmdListTopics(projectID string) []string {
 		"topics",
 		"list",
 		"--format=value(name)",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -466,7 +502,7 @@ func getCmdDeleteTopic(projectID, topic string) []string {
 		"topics",
 		"delete",
 		topic,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -477,7 +513,7 @@ func getCmdCreateTopic(projectID, topic string) []string {
 		"topics",
 		"create",
 		topic,
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -506,10 +542,10 @@ func getCmdEmpowerServiceAccount(
 		"services",
 		"add-iam-policy-binding",
 		auditorName,
-		fmt.Sprintf("--member=serviceAccount:%s", invokerServiceAccount),
+		"--member=serviceAccount:" + invokerServiceAccount,
 		"--role=roles/run.invoker",
 		"--platform=managed",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 		"--region=us-central1",
 	}
 }
@@ -522,7 +558,7 @@ func getCmdPurgePubSubMessages(projectID string) []string {
 		"seek",
 		subscriptionName,
 		"--time=+p1y",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -535,7 +571,7 @@ func getCmdCloudRunPushEndpoint(projectID string) []string {
 		auditorName,
 		"--platform=managed",
 		"--format=value(status.url)",
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 		"--region=us-central1",
 	}
 }
@@ -553,9 +589,9 @@ func getCmdCreatePubSubSubscription(
 		subscriptionName,
 		"--topic=gcr",
 		"--expiration-period=never",
-		fmt.Sprintf("--push-auth-service-account=%s", invokerServiceAccount),
-		fmt.Sprintf("--push-endpoint=%s", pushEndpoint),
-		fmt.Sprintf("--project=%s", projectID),
+		"--push-auth-service-account=" + invokerServiceAccount,
+		"--push-endpoint=" + pushEndpoint,
+		"--project=" + projectID,
 	}
 }
 
@@ -568,7 +604,7 @@ func getCmdShowLogs(projectID, uuid, pattern string) []string {
 		"read",
 		"--format=value(textPayload)",
 		fmt.Sprintf("logName=%s resource.labels.project_id=%s %q", fullLogName, projectID, uuidAndPattern),
-		fmt.Sprintf("--project=%s", projectID),
+		"--project=" + projectID,
 	}
 }
 
@@ -598,22 +634,22 @@ func getCmdsDeployCloudRun(
 			"run",
 			"deploy",
 			auditorName,
-			fmt.Sprintf("--image=%s", auditorImg),
+			"--image=" + auditorImg,
 			fmt.Sprintf("--update-env-vars=%s,%s,%s",
-				fmt.Sprintf("CIP_AUDIT_MANIFEST_REPO_MANIFEST_DIR=%s", manifestDir),
-				fmt.Sprintf("CIP_AUDIT_GCP_PROJECT_ID=%s", projectID),
+				"CIP_AUDIT_MANIFEST_REPO_MANIFEST_DIR=+"+manifestDir,
+				"CIP_AUDIT_GCP_PROJECT_ID="+projectID,
 				// Generate a new UUID for this Cloud Run instance. Although the
 				// Cloud Run instance gets a UUID assigned to it, using that
 				// would require fetching it from within the instance which is
 				// unnecessarily complicated. Instead we just generate one here
 				// and thread it through to the instance.
-				fmt.Sprintf("CIP_AUDIT_TESTCASE_UUID=%s", uuid),
+				"CIP_AUDIT_TESTCASE_UUID="+uuid,
 			),
 			"--platform=managed",
 			"--no-allow-unauthenticated",
 			"--region=us-central1",
-			fmt.Sprintf("--project=%s", projectID),
-			fmt.Sprintf("--service-account=%s", invokerServiceAccount),
+			"--project=" + projectID,
+			"--service-account=" + invokerServiceAccount,
 		},
 	}
 }
@@ -933,42 +969,6 @@ func checkLogs(projectID, uuid string, patterns []string) error {
 
 	return nil
 }
-
-// E2ETest holds all the information about a single e2e test. It has the
-// promoter manifest, and the before/after snapshots of all repositories that it
-// cares about.
-//
-// SetupCip is the cip command to run to set up the state. If it is empty, cip
-// is not called (to populate the GCR) --- this is useful for cases when we want
-// to have a blank GCR.
-//
-// Registries is the list of all registries involved for this test case. To
-// ensure hermeticity and reproducibility, these registries are *cleared* before
-// any of the actual test logic is executed.
-//
-// SetupExtra is how the test environment is set up *before* the Cloud Run
-// application is deployed.
-//
-// Mutations is how this test will modify the GCR state. It can be 1 or
-// more CLI statements.
-//
-// List of log statements (strings) to find in the logs (they are exact
-// string patterns to match, NOT regexes!). It is important to note that
-// *all* GCR state changes will result in *some* sort of log from the
-// auditor running in Cloud Run (whether the state change is VERIFIED or
-// REJECTED).
-type E2ETest struct {
-	Name        string             `yaml:"name,omitempty"`
-	Registries  []registry.Context `yaml:"registries,omitempty"`
-	ManifestDir string             `yaml:"manifestDir,omitempty"`
-	SetupCip    []string           `yaml:"setupCip,omitempty"`
-	SetupExtra  [][]string         `yaml:"setupExtra,omitempty"`
-	Mutations   [][]string         `yaml:"mutations,omitempty"`
-	LogMatch    []string           `yaml:"logMatch,omitempty"`
-}
-
-// E2ETests is an array of E2ETest.
-type E2ETests []*E2ETest
 
 func readE2ETests(filePath string) (E2ETests, error) {
 	var ts E2ETests
